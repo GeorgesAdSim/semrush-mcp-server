@@ -1,19 +1,26 @@
 {
-  "name": "semrush-mcp-server",
+  "name": "@adsim/semrush-mcp-server",
   "version": "1.0.0",
-  "description": "SEMrush API MCP Server for SEO analytics - Domain analysis, keyword research, backlinks, and traffic analytics",
+  "description": "SEMrush MCP Server for Claude — 10 tools, 40 actions",
   "type": "module",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "semrush-mcp-server": "./dist/index.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
     "mcp",
@@ -29,7 +36,10 @@
   "author": "Georges Cordewiener <georges@adsim.be>",
   "license": "MIT",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
