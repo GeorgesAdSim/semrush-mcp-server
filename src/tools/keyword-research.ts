@@ -16,7 +16,8 @@ export function registerKeywordResearchTools(server: McpServer): void {
 - difficulty: Keyword difficulty index (batch up to 100 keywords separated by semicolons)
 - organic_results: Domains ranking in Google's top 100 for a keyword
 - ad_results: Domains bidding on a keyword in Google Ads
-- broad_match: Broad match keyword variations and long-tail alternatives`,
+- broad_match: Broad match keyword variations and long-tail alternatives
+- bulk_overview: Batch analysis of up to 100 keywords at once (volume, KD, CPC, trend)`,
       inputSchema: {
         action: z
           .enum([
@@ -27,13 +28,21 @@ export function registerKeywordResearchTools(server: McpServer): void {
             "organic_results",
             "ad_results",
             "broad_match",
+            "bulk_overview",
           ])
           .describe("Research type to perform"),
         keyword: z
           .string()
           .min(1)
           .describe(
-            "Keyword to analyze. For 'difficulty' action: semicolon-separated list (e.g., 'seo;backlinks;netlinking')"
+            "Keyword to analyze. For 'difficulty' and 'bulk_overview': semicolon-separated list (e.g., 'seo;backlinks;netlinking')"
+          ),
+        keywords: z
+          .array(z.string())
+          .max(100)
+          .optional()
+          .describe(
+            "Array of keywords for 'bulk_overview' action (max 100). Alternative to semicolon-separated keyword string."
           ),
         database: z
           .string()
@@ -132,6 +141,37 @@ export function registerKeywordResearchTools(server: McpServer): void {
               export_columns: EXPORT_COLUMNS.phrase_fullsearch,
             });
             title = `Broad Match — "${params.keyword}" (${params.database})`;
+            break;
+          }
+          case "bulk_overview": {
+            // Accept either keywords[] array or semicolon-separated keyword string
+            const kwList = params.keywords?.length
+              ? params.keywords.join(";")
+              : params.keyword;
+
+            // Get volume + CPC + competition via phrase_all
+            const overviewResults = await client.analyticsRequest("phrase_all", {
+              phrase: kwList,
+              database: params.database,
+              export_columns: EXPORT_COLUMNS.phrase_all,
+            });
+
+            // Get KD for same keywords
+            const kdResults = await client.analyticsRequest("phrase_kdi", {
+              phrase: kwList,
+              database: params.database,
+              export_columns: EXPORT_COLUMNS.phrase_kdi,
+            });
+
+            // Merge KD into overview by keyword
+            const kdMap = new Map(
+              kdResults.map((r) => [r.keyword?.toLowerCase(), r.keyword_difficulty])
+            );
+            results = overviewResults.map((r) => ({
+              ...r,
+              keyword_difficulty: kdMap.get(r.keyword?.toLowerCase()) ?? "N/A",
+            }));
+            title = `Bulk Keyword Overview (${params.database})`;
             break;
           }
         }

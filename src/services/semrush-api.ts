@@ -3,6 +3,7 @@ import {
   RateLimiter,
   ResponseCache,
   auditLog,
+  getCacheTTL,
 } from "../utils/governance.js";
 import {
   SEMRUSH_ANALYTICS_BASE_URL,
@@ -11,6 +12,54 @@ import {
   COLUMN_LABELS,
 } from "../constants.js";
 import type { SemrushConfig } from "../types.js";
+
+// ===== Retry with Exponential Backoff =====
+
+async function fetchWithRetry(
+  url: string,
+  maxRetries: number = 3
+): Promise<Response> {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url);
+      // Retry on 429 (rate limit) or 5xx (server error)
+      if (response.status === 429 || response.status >= 500) {
+        if (attempt < maxRetries) {
+          const waitMs = 1000 * Math.pow(2, attempt);
+          auditLog({
+            timestamp: new Date().toISOString(),
+            tool: "fetchWithRetry",
+            endpoint: url.split("?")[0],
+            params: { attempt: String(attempt + 1), wait_ms: String(waitMs) },
+            status: "retry",
+            duration_ms: 0,
+            error: `HTTP ${response.status} — retrying in ${waitMs}ms`,
+          });
+          await new Promise((r) => setTimeout(r, waitMs));
+          continue;
+        }
+      }
+      return response;
+    } catch (err: unknown) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt < maxRetries) {
+        const waitMs = 1000 * Math.pow(2, attempt);
+        auditLog({
+          timestamp: new Date().toISOString(),
+          tool: "fetchWithRetry",
+          endpoint: url.split("?")[0],
+          params: { attempt: String(attempt + 1), wait_ms: String(waitMs) },
+          status: "retry",
+          duration_ms: 0,
+          error: lastError.message,
+        });
+        await new Promise((r) => setTimeout(r, waitMs));
+      }
+    }
+  }
+  throw lastError ?? new Error("fetchWithRetry: all retries exhausted");
+}
 
 let instance: SemrushApiClient | null = null;
 
@@ -60,7 +109,7 @@ class SemrushApiClient {
 
     try {
       await this.rateLimiter.acquire();
-      const response = await fetch(url);
+      const response = await fetchWithRetry(url);
       const text = await response.text();
       const duration = Date.now() - start;
 
@@ -89,7 +138,7 @@ class SemrushApiClient {
         duration_ms: duration,
       });
 
-      this.cache.set(cacheKey, results, this.config.cacheTtlSeconds);
+      this.cache.set(cacheKey, results, getCacheTTL(type, this.config.cacheTtlSeconds));
       return results;
     } catch (error: unknown) {
       const duration = Date.now() - start;
@@ -135,7 +184,7 @@ class SemrushApiClient {
 
     try {
       await this.rateLimiter.acquire();
-      const response = await fetch(url);
+      const response = await fetchWithRetry(url);
       const text = await response.text();
       const duration = Date.now() - start;
 
@@ -163,7 +212,7 @@ class SemrushApiClient {
         duration_ms: duration,
       });
 
-      this.cache.set(cacheKey, results, this.config.cacheTtlSeconds);
+      this.cache.set(cacheKey, results, getCacheTTL(type, this.config.cacheTtlSeconds));
       return results;
     } catch (error: unknown) {
       const duration = Date.now() - start;
@@ -207,7 +256,7 @@ class SemrushApiClient {
 
     try {
       await this.rateLimiter.acquire();
-      const response = await fetch(url);
+      const response = await fetchWithRetry(url);
       const duration = Date.now() - start;
 
       if (!response.ok) {
@@ -251,7 +300,7 @@ class SemrushApiClient {
         duration_ms: duration,
       });
 
-      this.cache.set(cacheKey, results, this.config.cacheTtlSeconds);
+      this.cache.set(cacheKey, results, getCacheTTL(`trends/${endpoint}`, this.config.cacheTtlSeconds));
       return results;
     } catch (error: unknown) {
       const duration = Date.now() - start;

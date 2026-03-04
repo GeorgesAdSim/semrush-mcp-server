@@ -15,7 +15,7 @@ export interface AuditLogEntry {
   tool: string;
   endpoint: string;
   params: Record<string, unknown>;
-  status: "success" | "error";
+  status: "success" | "error" | "retry";
   duration_ms: number;
   error?: string;
 }
