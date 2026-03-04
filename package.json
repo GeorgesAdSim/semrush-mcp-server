@@ -20,7 +20,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build && npm test",
+    "release": "standard-version",
+    "release:minor": "standard-version --release-as minor",
+    "release:major": "standard-version --release-as major"
   },
   "keywords": [
     "mcp",
@@ -47,6 +50,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "standard-version": "^9.5.0",
     "typescript": "^5.7.0",
     "vitest": "^4.0.18"
   }

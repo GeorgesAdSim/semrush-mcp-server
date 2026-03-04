@@ -1,0 +1,15 @@
+{
+  "types": [
+    { "type": "feat", "section": "Features", "hidden": false },
+    { "type": "fix", "section": "Bug Fixes", "hidden": false },
+    { "type": "perf", "section": "Performance", "hidden": false },
+    { "type": "refactor", "section": "Refactoring", "hidden": false },
+    { "type": "docs", "section": "Documentation", "hidden": false },
+    { "type": "test", "section": "Tests", "hidden": false },
+    { "type": "ci", "section": "CI/CD", "hidden": false },
+    { "type": "chore", "hidden": true }
+  ],
+  "commitUrlFormat": "https://github.com/GeorgesAdSim/semrush-mcp-server/commit/{{hash}}",
+  "compareUrlFormat": "https://github.com/GeorgesAdSim/semrush-mcp-server/compare/{{previousTag}}...{{currentTag}}",
+  "issueUrlFormat": "https://github.com/GeorgesAdSim/semrush-mcp-server/issues/{{id}}"
+}
