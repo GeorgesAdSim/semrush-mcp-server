@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { SemrushConfig, AuditLogEntry } from "../types.js";
-import { DEFAULT_CONFIG, ACTION_COSTS } from "../constants.js";
+import { DEFAULT_CONFIG, ACTION_COSTS, TTL_BY_ACTION } from "../constants.js";
 
 // ===== Quota Management (Multi-tenant) =====
 
@@ -85,35 +85,7 @@ export class QuotaManager {
   }
 }
 
-// ===== TTL by Action Category =====
-
-const TTL_BY_ACTION: Record<string, number> = {
-  // Domain overview & history — stable data, long cache
-  domain_ranks: 86400,
-  domain_rank: 86400,
-  domain_rank_history: 86400,
-  // Backlinks — semi-stable
-  backlinks_overview: 43200,
-  backlinks: 43200,
-  backlinks_refdomains: 43200,
-  backlinks_anchors: 43200,
-  backlinks_tld: 43200,
-  backlinks_geo: 43200,
-  backlinks_pages: 43200,
-  // Keyword overview — moderate cache
-  phrase_all: 3600,
-  phrase_related: 3600,
-  phrase_questions: 3600,
-  phrase_kdi: 3600,
-  phrase_fullsearch: 3600,
-  // Positions & real-time — short cache
-  phrase_organic: 1800,
-  phrase_adwords: 1800,
-  domain_organic: 1800,
-  domain_adwords: 1800,
-  url_organic: 1800,
-  url_adwords: 1800,
-};
+// ===== TTL by Action Category (imported from constants) =====
 
 export function getCacheTTL(action: string, fallback: number = 3600): number {
   return TTL_BY_ACTION[action] ?? fallback;
