@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getSemrushClient } from "../services/semrush-api.js";
 import { EXPORT_COLUMNS } from "../constants.js";
+import { summarizeBacklinksOverview, summarizeRefdomains } from "../utils/summaries.js";
 
 export function registerBacklinksTools(server: McpServer): void {
   server.registerTool(
@@ -134,8 +135,31 @@ export function registerBacklinksTools(server: McpServer): void {
           }
         }
 
+        // Build French summary
+        let summary = "";
+        switch (params.action) {
+          case "overview":
+            summary = summarizeBacklinksOverview(params.target, results);
+            break;
+          case "refdomains":
+            summary = summarizeRefdomains(params.target, results);
+            break;
+          case "anchors":
+            summary = results.length > 0
+              ? `${results.length} ancres distinctes trouvées pour ${params.target}. Ancre principale : "${results[0]?.anchor ?? "?"}".`
+              : `Aucune ancre trouvée pour ${params.target}.`;
+            break;
+          default:
+            summary = results.length > 0
+              ? `${results.length} résultats backlinks pour ${params.target}.`
+              : `Aucun résultat pour ${params.target}.`;
+        }
+
         const text = [
           `## ${title}`,
+          "",
+          summary,
+          "",
           `Type: ${params.target_type} | Results: ${results.length}`,
           "",
           results.length === 0

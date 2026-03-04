@@ -54,6 +54,36 @@ export const EXPORT_COLUMNS: Record<string, string> = {
   phrase_fullsearch: "Ph,Nq,Cp,Co,Nr,Td",
 };
 
+// Valid SEMrush databases (50+)
+export const VALID_DATABASES = [
+  "us", "uk", "ca", "au", "de", "fr", "es", "it", "br", "ar",
+  "be", "ch", "dk", "fi", "hk", "ie", "il", "mx", "nl", "no",
+  "pl", "se", "sg", "tr", "jp", "in", "hu", "za", "at", "bg",
+  "cy", "cz", "ee", "gr", "hr", "lt", "lv", "mt", "pt", "ro",
+  "rs", "si", "sk", "ua", "vn", "kr", "my", "ph", "th", "tw",
+  "id", "ng", "ke", "co", "cl", "pe", "ec", "ve", "bo", "py",
+  "uy", "cr", "gt", "pa", "do", "sv", "hn", "ni", "pr", "tt", "jm",
+] as const;
+
+export type SemrushDatabase = (typeof VALID_DATABASES)[number];
+
+// Action cost for quota management
+export const ACTION_COSTS: Record<string, number> = {
+  // Domain
+  domain_organic: 10, domain_adwords: 10, domain_ranks: 10, domain_rank: 10,
+  domain_rank_history: 10, domain_organic_organic: 10, domain_adwords_adwords: 10,
+  url_organic: 10, url_adwords: 10,
+  // Keywords
+  phrase_all: 1, phrase_related: 1, phrase_questions: 1, phrase_kdi: 1,
+  phrase_organic: 1, phrase_adwords: 1, phrase_fullsearch: 1,
+  // Backlinks
+  backlinks_overview: 5, backlinks: 5, backlinks_refdomains: 5,
+  backlinks_anchors: 5, backlinks_tld: 5, backlinks_geo: 5, backlinks_pages: 5,
+  // Computed
+  gap_keyword: 20, gap_backlink: 20, gap_content: 20,
+  cluster_enrich: 25, recommend: 30,
+};
+
 // Column header short-code to friendly name mapping
 export const COLUMN_LABELS: Record<string, string> = {
   // Domain / general

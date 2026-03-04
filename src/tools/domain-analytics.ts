@@ -1,7 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getSemrushClient } from "../services/semrush-api.js";
-import { EXPORT_COLUMNS } from "../constants.js";
+import { EXPORT_COLUMNS, VALID_DATABASES } from "../constants.js";
+import { summarizeDomainOrganic, summarizeDomainOverview, summarizeDomainCompetitors } from "../utils/summaries.js";
 
 export function registerDomainAnalyticsTools(server: McpServer): void {
   server.registerTool(
@@ -36,11 +37,15 @@ export function registerDomainAnalyticsTools(server: McpServer): void {
         domain: z
           .string()
           .min(3)
+          .regex(
+            /^[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$/,
+            "Format de domaine invalide (ex: example.com, sans http://)"
+          )
           .describe("Domain to analyze (e.g., 'example.com')"),
         database: z
           .string()
           .default("fr")
-          .describe("SEMrush database code (e.g., 'fr', 'us', 'be')"),
+          .describe(`SEMrush database code. Valides: ${VALID_DATABASES.slice(0, 15).join(", ")}...`),
         limit: z
           .number()
           .min(1)
@@ -169,8 +174,33 @@ export function registerDomainAnalyticsTools(server: McpServer): void {
           }
         }
 
+        // Build French summary based on action
+        let summary = "";
+        switch (params.action) {
+          case "organic":
+          case "adwords":
+          case "url_organic":
+          case "url_adwords":
+            summary = summarizeDomainOrganic(params.domain, params.database, results);
+            break;
+          case "overview":
+            summary = summarizeDomainOverview(params.domain, results);
+            break;
+          case "competitors":
+          case "paid_competitors":
+            summary = summarizeDomainCompetitors(params.domain, params.database, results);
+            break;
+          default:
+            summary = results.length > 0
+              ? `${results.length} résultats trouvés pour ${params.domain} (${params.database}).`
+              : `Aucun résultat pour ${params.domain}.`;
+        }
+
         const text = [
           `## ${title}`,
+          "",
+          summary,
+          "",
           `Results: ${results.length}`,
           "",
           results.length === 0

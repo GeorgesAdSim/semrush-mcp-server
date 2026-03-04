@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getSemrushClient } from "../services/semrush-api.js";
 import { EXPORT_COLUMNS } from "../constants.js";
+import { summarizeKeywordOverview, summarizeKeywordRelated, summarizeKeywordDifficulty } from "../utils/summaries.js";
 
 export function registerKeywordResearchTools(server: McpServer): void {
   server.registerTool(
@@ -176,8 +177,35 @@ export function registerKeywordResearchTools(server: McpServer): void {
           }
         }
 
+        // Build French summary
+        let summary = "";
+        switch (params.action) {
+          case "overview":
+            summary = summarizeKeywordOverview(params.keyword, params.database, results);
+            break;
+          case "related":
+          case "broad_match":
+            summary = summarizeKeywordRelated(params.keyword, params.database, results);
+            break;
+          case "difficulty":
+            summary = summarizeKeywordDifficulty(results);
+            break;
+          case "questions":
+            summary = results.length > 0
+              ? `${results.length} questions trouvées pour "${params.keyword}" en ${params.database.toUpperCase()}.`
+              : `Aucune question trouvée pour "${params.keyword}".`;
+            break;
+          default:
+            summary = results.length > 0
+              ? `${results.length} résultats pour "${params.keyword}" (${params.database}).`
+              : `Aucun résultat pour "${params.keyword}".`;
+        }
+
         const text = [
           `## ${title}`,
+          "",
+          summary,
+          "",
           `Results: ${results.length}`,
           "",
           results.length === 0

@@ -1,6 +1,89 @@
 import { createHash } from "node:crypto";
 import type { SemrushConfig, AuditLogEntry } from "../types.js";
-import { DEFAULT_CONFIG } from "../constants.js";
+import { DEFAULT_CONFIG, ACTION_COSTS } from "../constants.js";
+
+// ===== Quota Management (Multi-tenant) =====
+
+export class QuotaExceededError extends Error {
+  public resetTime: Date;
+  constructor(userId: string, resetTime: Date) {
+    super(
+      `Quota dépassé pour l'utilisateur ${userId}. Reset à ${resetTime.toISOString()}`
+    );
+    this.name = "QuotaExceededError";
+    this.resetTime = resetTime;
+  }
+}
+
+/** Interface for future Supabase/DB backend */
+export interface QuotaBackend {
+  getUsage(userId: string): Promise<number>;
+  getLimit(userId: string): Promise<number>;
+  incrementUsage(userId: string, cost: number): Promise<void>;
+  reset(userId: string): Promise<void>;
+}
+
+export class QuotaManager {
+  private usage = new Map<string, { used: number; resetAt: number }>();
+  private defaultDailyLimit: number;
+  private resetInterval: ReturnType<typeof setInterval>;
+
+  constructor(dailyLimit: number = 10000) {
+    this.defaultDailyLimit = dailyLimit;
+    // Reset all quotas daily at midnight
+    this.resetInterval = setInterval(() => this.resetAll(), 86400 * 1000);
+  }
+
+  checkQuota(userId: string, action: string): void {
+    const cost = ACTION_COSTS[action] ?? 1;
+    const entry = this.getOrCreate(userId);
+    if (entry.used + cost > this.defaultDailyLimit) {
+      throw new QuotaExceededError(userId, new Date(entry.resetAt));
+    }
+  }
+
+  incrementUsage(userId: string, action: string): void {
+    const cost = ACTION_COSTS[action] ?? 1;
+    const entry = this.getOrCreate(userId);
+    entry.used += cost;
+  }
+
+  getUsage(userId: string): { used: number; limit: number; remaining: number; resetAt: string } {
+    const entry = this.getOrCreate(userId);
+    return {
+      used: entry.used,
+      limit: this.defaultDailyLimit,
+      remaining: Math.max(0, this.defaultDailyLimit - entry.used),
+      resetAt: new Date(entry.resetAt).toISOString(),
+    };
+  }
+
+  private getOrCreate(userId: string): { used: number; resetAt: number } {
+    let entry = this.usage.get(userId);
+    if (!entry || Date.now() > entry.resetAt) {
+      entry = {
+        used: 0,
+        resetAt: this.getNextMidnight(),
+      };
+      this.usage.set(userId, entry);
+    }
+    return entry;
+  }
+
+  private getNextMidnight(): number {
+    const d = new Date();
+    d.setHours(24, 0, 0, 0);
+    return d.getTime();
+  }
+
+  private resetAll(): void {
+    this.usage.clear();
+  }
+
+  destroy(): void {
+    clearInterval(this.resetInterval);
+  }
+}
 
 // ===== TTL by Action Category =====
 

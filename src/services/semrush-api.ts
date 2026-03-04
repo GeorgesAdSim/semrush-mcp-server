@@ -139,8 +139,10 @@ class SemrushApiClient {
       });
 
       this.cache.set(cacheKey, results, getCacheTTL(type, this.config.cacheTtlSeconds));
+      this.trackCall(type, false);
       return results;
     } catch (error: unknown) {
+      this.trackCall(type, true);
       const duration = Date.now() - start;
       const message = error instanceof Error ? error.message : String(error);
 
@@ -213,8 +215,10 @@ class SemrushApiClient {
       });
 
       this.cache.set(cacheKey, results, getCacheTTL(type, this.config.cacheTtlSeconds));
+      this.trackCall(type, false);
       return results;
     } catch (error: unknown) {
+      this.trackCall(type, true);
       const duration = Date.now() - start;
       const message = error instanceof Error ? error.message : String(error);
 
@@ -301,8 +305,10 @@ class SemrushApiClient {
       });
 
       this.cache.set(cacheKey, results, getCacheTTL(`trends/${endpoint}`, this.config.cacheTtlSeconds));
+      this.trackCall(`trends/${endpoint}`, false);
       return results;
     } catch (error: unknown) {
+      this.trackCall(`trends/${endpoint}`, true);
       const duration = Date.now() - start;
       const message = error instanceof Error ? error.message : String(error);
 
@@ -319,6 +325,53 @@ class SemrushApiClient {
       }
       throw error;
     }
+  }
+
+  // ===== API Units & Session Stats =====
+
+  private sessionStats = {
+    calls: 0,
+    errors: 0,
+    endpoints: new Map<string, number>(),
+    startedAt: new Date().toISOString(),
+  };
+
+  private trackCall(endpoint: string, isError: boolean): void {
+    this.sessionStats.calls++;
+    if (isError) this.sessionStats.errors++;
+    this.sessionStats.endpoints.set(
+      endpoint,
+      (this.sessionStats.endpoints.get(endpoint) ?? 0) + 1
+    );
+  }
+
+  async getApiUnits(): Promise<number> {
+    const url = `https://www.semrush.com/users/countapiunits.html?key=${this.config.apiKey}`;
+    await this.rateLimiter.acquire();
+    const response = await fetchWithRetry(url);
+    const text = await response.text();
+    const units = parseFloat(text.trim());
+    if (isNaN(units)) {
+      throw new Error(`Impossible de lire le solde API: ${text.trim()}`);
+    }
+    return units;
+  }
+
+  getSessionStats(): Record<string, unknown> {
+    const endpointBreakdown: Record<string, number> = {};
+    for (const [ep, count] of this.sessionStats.endpoints) {
+      endpointBreakdown[ep] = count;
+    }
+    return {
+      session_started: this.sessionStats.startedAt,
+      total_calls: this.sessionStats.calls,
+      total_errors: this.sessionStats.errors,
+      success_rate:
+        this.sessionStats.calls > 0
+          ? `${Math.round(((this.sessionStats.calls - this.sessionStats.errors) / this.sessionStats.calls) * 100)}%`
+          : "N/A",
+      endpoints: endpointBreakdown,
+    };
   }
 
   // ===== CSV Parser =====
