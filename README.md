@@ -79,9 +79,6 @@ Restart your client. 10 tools (40 actions) are now available.
 
 Each tool uses an `action` parameter to select the analysis type. This grouped design keeps the context window lean (10 tool definitions instead of 40).
 
-<details>
-<summary><strong>Full actions reference</strong></summary>
-
 ### `semrush_domain` — Domain Analytics (9 actions)
 
 | Action | Description |
@@ -166,11 +163,13 @@ Each tool uses an `action` parameter to select the analysis type. This grouped d
 | `balance` | Remaining API units |
 | `usage_stats` | Session statistics (calls, errors, success rate) |
 
-### `semrush_enrich_cluster` — Cluster Enrichment
+### `semrush_enrich_cluster` — Cluster Enrichment (1 action)
 
-Accepts a keyword array and returns enriched data with search volume, CPC, keyword difficulty, `cluster_score` (0-100), `cluster_grade` (A-D), and `opportunity_score` for prioritization.
-
-</details>
+Accepts a keyword array and returns enriched data with:
+- Search volume, CPC, keyword difficulty per keyword
+- `cluster_score` (0-100) and `cluster_grade` (A-D)
+- `opportunity_score` for prioritization
+- Optional: current positions when `target_domain` provided
 
 ---
 
